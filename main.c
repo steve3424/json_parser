@@ -232,6 +232,11 @@ int main() {
 				text_i = tokens[token_i].start_index + tokens[token_i].length;
 				++token_i;
 			} break;
+
+			default: {
+				printf("Unrecognized token start at index %d: %c", text_i, json_string[text_i]);
+				bad_token_found = 1;
+			} break;
 		}
 	}
 
