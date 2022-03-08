@@ -21,6 +21,10 @@ typedef struct {
 	unsigned int length;
 } TOKEN;
 
+void Token_Print(TOKEN* t, char* string) {
+	assert(t);
+	printf("%.*s", t->length, string + t->start_index);
+}
 
 // TODO: This doesn't handle escaped quote chars
 void LexString(char* text, int text_i, int text_len, TOKEN* token) {
@@ -44,27 +48,23 @@ void LexString(char* text, int text_i, int text_len, TOKEN* token) {
 	token->length = text_i - token->start_index;
 }
 
-// TODO: Should this check for proper value after 'false' token ?
-// int LexFalse(char* text, int i, int text_len, TOKEN* token) {
-// 	assert(text);
-// 	assert(-1 < i);
-// 	assert(token);
+void LexFalse(char* text, int i, int text_len, TOKEN* token) {
+	assert(text);
+	assert(-1 < i);
+	assert(token);
 
-// 	token->boolean = 0;
-// 	token->type = BAD_TOKEN;
+	token->type = BAD_TOKEN;
 
-// 	if((5 <= (text_len - i)) &&
-// 	  (text[i] == 'f') &&
-// 	  (text[i + 1] == 'a') &&
-// 	  (text[i + 2] == 'l') &&
-// 	  (text[i + 3] == 's') &&
-// 	  (text[i + 4] == 'e')) 
-// 	{
-// 		token->type = BOOLEAN;
-// 	}
-
-// 	return i + 5;
-// }
+	if((5 <= (text_len - i)) &&
+	  (text[i] == 'f')     &&
+	  (text[i + 1] == 'a') &&
+	  (text[i + 2] == 'l') &&
+	  (text[i + 3] == 's') &&
+	  (text[i + 4] == 'e')) 
+	{
+		token->type = BOOLEAN;
+	}
+}
 
 int main() {
 	// char* json_string = "{ 	\n\r"
@@ -159,13 +159,17 @@ int main() {
 				LexString(json_string, text_i, text_len, &tokens[token_i]);
 				if(tokens[token_i].type == BAD_TOKEN) {
 					printf("BAD_STRING_TOKEN: [%d,%d) ", tokens[token_i].start_index, tokens[token_i].length);
-					fwrite(json_string + tokens[token_i].start_index, 1, tokens[token_i].length, stdout);
+					Token_Print(&tokens[token_i], json_string);
 				}
 
-				text_i += tokens[token_i].length;
+				text_i = tokens[token_i].start_index + tokens[token_i].length;
 				// Move past end quote
 				++text_i;
 				++token_i;
+			} break;
+
+			case 'f': {
+				LexFalse(json_string, text_i, text_len, &tokens[token_i]);
 			} break;
 
 			// case 'f': {
@@ -189,7 +193,7 @@ int main() {
 
 	printf("** TOKENS **\n[");
 	for (int i = 0; i < token_i; i++) {
-		printf("%.*s", tokens[i].length, json_string + tokens[i].start_index);
+		Token_Print(&tokens[i], json_string);
 		printf(", ");
 	}
 
