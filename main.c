@@ -26,7 +26,7 @@ void Token_Print(TOKEN* t, char* string) {
 	printf("%.*s", t->length, string + t->start_index);
 }
 
-// TODO: This doesn't handle escaped quote chars
+// TODO: Handle escaped chars
 void LexString(char* text, int text_i, int text_len, TOKEN* token) {
 	assert(text);
 	assert(-1 < text_i);
@@ -189,6 +189,12 @@ int main() {
 				
 				text_i = tokens[token_i].start_index + tokens[token_i].length;
 				++token_i;
+			} break;
+
+			// INVALID TOKENS
+			default: {
+				LexInvalid(json_string, text_i, text_len, &tokens[token_i]);
+				bad_token_found = 1;
 			} break;
 		}
 	}
