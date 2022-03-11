@@ -3,16 +3,16 @@
 #include <assert.h>
 
 typedef enum {
-	OPEN_CURLY,
-	CLOSE_CURLY,
-	OPEN_BRACKET,
-	CLOSE_BRACKET,
-	QUOTE,
-	COLON,
-	COMMA,
-	STRING,
-	BOOLEAN,
-	BAD_TOKEN
+	TOKEN_OPEN_CURLY,
+	TOKEN_CLOSE_CURLY,
+	TOKEN_OPEN_BRACKET,
+	TOKEN_CLOSE_BRACKET,
+	TOKEN_COLON,
+	TOKEN_COMMA,
+	TOKEN_STRING,
+	TOKEN_BOOLEAN,
+	TOKEN_NULL,
+	TOKEN_BAD
 } TOKEN_TYPE;
 
 typedef struct {
@@ -33,12 +33,12 @@ void LexString(char* text, int text_i, int text_len, TOKEN* token) {
 	assert(token);
 
 
-	token->type = BAD_TOKEN;
+	token->type = TOKEN_BAD;
 	token->start_index = text_i;
 	while(text_i < text_len)
 	{
 		if(text[text_i] == '\"') {
-			token->type = STRING;
+			token->type = TOKEN_STRING;
 			break;
 		}
 
@@ -48,67 +48,35 @@ void LexString(char* text, int text_i, int text_len, TOKEN* token) {
 	token->length = text_i - token->start_index;
 }
 
-// TODO: LexFalse, LexTrue, and LexNull can probably be one function
-void LexTrue(char* text, int text_i, int text_len, TOKEN* token) {
+void LexLiteral(char* text, int text_i, int text_len, TOKEN* token, const char* literal) {
 	assert(text);
 	assert(-1 < text_i);
 	assert(token);
+	assert(literal);
 
-	token->type = BOOLEAN;
+	token->type = literal[0] == 'n' ? TOKEN_NULL : TOKEN_BOOLEAN;
 	token->start_index = text_i;
 	token->length = 1;
 
-	// NOTE: Since we only call this function when we see 't'
-	//		 we can push text_i forward one and check for 'rue'
 	++text_i;
-	const char* true_literal = "rue";
-	for(int i = 0; i < 3; ++i) {
+	int literal_i = 1;
+	while(literal[literal_i]) {
 		if(text_i == text_len) {
-			token->type = BAD_TOKEN;
+			token->type = TOKEN_BAD;
 			break;
 		}
-		else if(text[text_i] != true_literal[i]) {
-			token->type = BAD_TOKEN;
+		else if(text[text_i] != literal[literal_i]) {
+			token->type = TOKEN_BAD;
 		}
 
 		++text_i;
-		++token->length;
-	}
-}
-
-void LexFalse(char* text, int text_i, int text_len, TOKEN* token) {
-	assert(text);
-	assert(-1 < text_i);
-	assert(token);
-
-	token->type = BOOLEAN;
-	token->start_index = text_i;
-	token->length = 1;
-
-	// NOTE: Since we only call this function when we see 'f'
-	//		 we can push text_i forward one and check for 'alse'
-	++text_i;
-	const char* false_literal = "alse";
-	for(int i = 0; i < 4; ++i) {
-		if(text_i == text_len) {
-			token->type = BAD_TOKEN;
-			break;
-		}
-		else if(text[text_i] != false_literal[i]) {
-			token->type = BAD_TOKEN;
-		}
-
-		++text_i;
+		++literal_i;
 		++token->length;
 	}
 }
 
 int main() {
-	// char* json_string = "{ 	\n\r"
-	// 				"\"key\" : flse,"
-	// 				"\"key\":[\"val\"]"
-	// 			  "}";
-	char* json_string = "trueb";
+	char* json_string = "true false null";
 	printf("** JSON **\n%s\n", json_string);
 	int text_len = strlen(json_string); 
 
@@ -122,7 +90,7 @@ int main() {
 		switch (c) {
 			// STRUCTURAL CHARACTERS
 			case '{': {
-				tokens[token_i].type = OPEN_CURLY;
+				tokens[token_i].type = TOKEN_OPEN_CURLY;
 				tokens[token_i].start_index = text_i;
 				tokens[token_i].length = 1;
 				
@@ -131,7 +99,7 @@ int main() {
 			} break;
 
 			case '}': {
-				tokens[token_i].type = CLOSE_CURLY;
+				tokens[token_i].type = TOKEN_CLOSE_CURLY;
 				tokens[token_i].start_index = text_i;
 				tokens[token_i].length = 1;
 				
@@ -140,7 +108,7 @@ int main() {
 			} break;
 
 			case '[': {
-				tokens[token_i].type = OPEN_BRACKET;
+				tokens[token_i].type = TOKEN_OPEN_BRACKET;
 				tokens[token_i].start_index = text_i;
 				tokens[token_i].length = 1;
 				
@@ -149,7 +117,7 @@ int main() {
 			} break;
 
 			case ']': {
-				tokens[token_i].type = CLOSE_BRACKET;
+				tokens[token_i].type = TOKEN_CLOSE_BRACKET;
 				tokens[token_i].start_index = text_i;
 				tokens[token_i].length = 1;
 				
@@ -158,7 +126,7 @@ int main() {
 			} break;
 
 			case ':': {
-				tokens[token_i].type = COLON;
+				tokens[token_i].type = TOKEN_COLON;
 				tokens[token_i].start_index = text_i;
 				tokens[token_i].length = 1;
 				
@@ -167,7 +135,7 @@ int main() {
 			} break;
 
 			case ',': {
-				tokens[token_i].type = COMMA;
+				tokens[token_i].type = TOKEN_COMMA;
 				tokens[token_i].start_index = text_i;
 				tokens[token_i].length = 1;
 				
@@ -176,16 +144,10 @@ int main() {
 			} break;
 
 			// WHITESPACE CHARS
-			case ' ': {
-				++text_i;
-			} break;
+			case ' ':
+			case '\r':
+			case '\n':
 			case '\t': {
-				++text_i;
-			} break;
-			case '\n': {
-				++text_i;
-			} break;
-			case '\r': {
 				++text_i;
 			} break;
 
@@ -194,7 +156,7 @@ int main() {
 				// Move past the actual quote
 				++text_i;
 				LexString(json_string, text_i, text_len, &tokens[token_i]);
-				if(tokens[token_i].type == BAD_TOKEN) {
+				if(tokens[token_i].type == TOKEN_BAD) {
 					printf("BAD_TOKEN: [%d,%d) ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
 					Token_Print(&tokens[token_i], json_string);
 					printf("\n");
@@ -207,35 +169,26 @@ int main() {
 				++token_i;
 			} break;
 
-			case 'f': {
-				LexFalse(json_string, text_i, text_len, &tokens[token_i]);
-				if(tokens[token_i].type == BAD_TOKEN) {
-					printf("BAD_TOKEN: [%d,%d) ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
-					Token_Print(&tokens[token_i], json_string);
-					printf("\n");
-					bad_token_found = 1;
-				}
-
-				text_i = tokens[token_i].start_index + tokens[token_i].length;
-				++token_i;
-			} break;
-
+			// VALID LITERALS
 			case 't': {
-				LexTrue(json_string, text_i, text_len, &tokens[token_i]);
-				if(tokens[token_i].type == BAD_TOKEN) {
-					printf("BAD_TOKEN: [%d,%d) ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
-					Token_Print(&tokens[token_i], json_string);
-					printf("\n");
-					bad_token_found = 1;
-				}
-
+				LexLiteral(json_string, text_i, text_len, &tokens[token_i], "true");
+				
 				text_i = tokens[token_i].start_index + tokens[token_i].length;
 				++token_i;
 			} break;
 
-			default: {
-				printf("Unrecognized token start at index %d: %c", text_i, json_string[text_i]);
-				bad_token_found = 1;
+			case 'f': {
+				LexLiteral(json_string, text_i, text_len, &tokens[token_i], "false");
+				
+				text_i = tokens[token_i].start_index + tokens[token_i].length;
+				++token_i;
+			} break;
+
+			case 'n': {
+				LexLiteral(json_string, text_i, text_len, &tokens[token_i], "null");
+				
+				text_i = tokens[token_i].start_index + tokens[token_i].length;
+				++token_i;
 			} break;
 		}
 	}
