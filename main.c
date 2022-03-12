@@ -123,7 +123,7 @@ inline void LexNull(char* text, TOKEN* token) {
 }
 
 int main() {
-	char* json_string = "true false 22";
+	char* json_string = "true fall";
 	printf("** JSON **\n%s\n", json_string);
 	int text_len = strlen(json_string); 
 
@@ -203,16 +203,15 @@ int main() {
 				// Move past the actual quote
 				++text_i;
 				LexString(json_string, text_i, text_len, &tokens[token_i]);
+				// Add one to move past end quote
+				text_i = tokens[token_i].start_index + tokens[token_i].length + 1;
+
 				if(tokens[token_i].type == TOKEN_BAD) {
-					printf("BAD_TOKEN: [%d,%d) ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
+					printf("BAD_TOKEN [%d,%d): ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
 					Token_Print(&tokens[token_i], json_string);
 					printf("\n");
 					bad_token_found = 1;
 				}
-
-				text_i = tokens[token_i].start_index + tokens[token_i].length;
-				// Move past end quote
-				++text_i;
 				++token_i;
 			} break;
 
@@ -234,26 +233,28 @@ int main() {
 				// 	//
 				// }
 
+				text_i = tokens[token_i].start_index + tokens[token_i].length;
+
 				if(tokens[token_i].type == TOKEN_BAD) {
-					printf("BAD_TOKEN: [%d,%d) ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
+					printf("BAD_TOKEN [%d,%d): ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
 					Token_Print(&tokens[token_i], json_string);
 					printf("\n");
 					bad_token_found = 1;
 				}
-
-				text_i = tokens[token_i].start_index + tokens[token_i].length;
 				++token_i;
 			} break;
 		}
 	}
 
 	// Print Tokens
-	printf("\n** TOKENS **\n[");
-	for (int i = 0; i < token_i; i++) {
-		Token_Print(&tokens[i], json_string);
-		printf(", ");
+	if(!bad_token_found) {
+		printf("\n** TOKENS **\n[");
+		for (int i = 0; i < token_i; i++) {
+			Token_Print(&tokens[i], json_string);
+			printf(", ");
+		}
+		printf("]\n");
 	}
-	printf("]\n");
 	
 	return 0;
 }
