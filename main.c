@@ -23,7 +23,12 @@ typedef struct {
 
 void Token_Print(TOKEN* t, char* string) {
 	assert(t);
-	printf("%.*s", t->length, string + t->start_index);
+	if(t->type == TOKEN_BAD) {
+		printf("XXX---%.*s---XXX", t->length, string + t->start_index);
+	}
+	else {
+		printf("%.*s", t->length, string + t->start_index);
+	}
 }
 
 // TODO: Handle escaped chars
@@ -31,7 +36,6 @@ void LexString(char* text, int text_i, int text_len, TOKEN* token) {
 	assert(text);
 	assert(-1 < text_i);
 	assert(token);
-
 
 	token->type = TOKEN_BAD;
 	token->start_index = text_i;
@@ -48,35 +52,78 @@ void LexString(char* text, int text_i, int text_len, TOKEN* token) {
 	token->length = text_i - token->start_index;
 }
 
-void LexLiteral(char* text, int text_i, int text_len, TOKEN* token, const char* literal) {
+// NOTE: This just finds the end of the literal
+void LexLiteral(char* text, int text_i, int text_len, TOKEN* token) {
 	assert(text);
 	assert(-1 < text_i);
 	assert(token);
-	assert(literal);
 
-	token->type = literal[0] == 'n' ? TOKEN_NULL : TOKEN_BOOLEAN;
+	token->type = TOKEN_BAD;
 	token->start_index = text_i;
-	token->length = 1;
-
-	++text_i;
-	int literal_i = 1;
-	while(literal[literal_i]) {
-		if(text_i == text_len) {
-			token->type = TOKEN_BAD;
-			break;
-		}
-		else if(text[text_i] != literal[literal_i]) {
-			token->type = TOKEN_BAD;
-		}
-
+	while(text_i < text_len    &&
+		  text[text_i] != ' '  &&
+		  text[text_i] != ','  &&
+		  text[text_i] != '\r' &&
+		  text[text_i] != '\n' &&
+		  text[text_i] != '\t')
+	{
 		++text_i;
-		++literal_i;
-		++token->length;
+	}
+
+	token->length = text_i - token->start_index;
+}
+
+inline void LexTrue(char* text, TOKEN* token) {
+	assert(text);
+	assert(token);
+
+	// NOTE: We already should have checked the first letter so we can just
+	// check the next letters
+	int i = token->start_index + 1;
+	if(token->length == 4 &&
+	   text[i]     == 'r' &&
+	   text[i + 1] == 'u' &&
+	   text[i + 2] == 'e')
+	{
+		token->type = TOKEN_BOOLEAN;
+	}
+}
+
+inline void LexFalse(char* text, TOKEN* token) {
+	assert(text);
+	assert(token);
+
+	// NOTE: We already should have checked the first letter so we can just
+	// check the next letters
+	int i = token->start_index + 1;
+	if(token->length == 5 &&
+	   text[i]     == 'a' &&
+	   text[i + 1] == 'l' &&
+	   text[i + 2] == 's' &&
+	   text[i + 3] == 'e')
+	{
+		token->type = TOKEN_BOOLEAN;
+	}
+}
+
+inline void LexNull(char* text, TOKEN* token) {
+	assert(text);
+	assert(token);
+
+	// NOTE: We already should have checked the first letter so we can just
+	// check the next letters
+	int i = token->start_index + 1;
+	if(token->length == 4 &&
+	   text[i]     == 'u' &&
+	   text[i + 1] == 'l' &&
+	   text[i + 2] == 'l')
+	{
+		token->type = TOKEN_NULL;
 	}
 }
 
 int main() {
-	char* json_string = "true false null";
+	char* json_string = "true false 22";
 	printf("** JSON **\n%s\n", json_string);
 	int text_len = strlen(json_string); 
 
@@ -169,32 +216,33 @@ int main() {
 				++token_i;
 			} break;
 
-			// VALID LITERALS
-			case 't': {
-				LexLiteral(json_string, text_i, text_len, &tokens[token_i], "true");
-				
-				text_i = tokens[token_i].start_index + tokens[token_i].length;
-				++token_i;
-			} break;
-
-			case 'f': {
-				LexLiteral(json_string, text_i, text_len, &tokens[token_i], "false");
-				
-				text_i = tokens[token_i].start_index + tokens[token_i].length;
-				++token_i;
-			} break;
-
-			case 'n': {
-				LexLiteral(json_string, text_i, text_len, &tokens[token_i], "null");
-				
-				text_i = tokens[token_i].start_index + tokens[token_i].length;
-				++token_i;
-			} break;
-
-			// INVALID TOKENS
+			// LITERALS
 			default: {
-				LexInvalid(json_string, text_i, text_len, &tokens[token_i]);
-				bad_token_found = 1;
+				LexLiteral(json_string, text_i, text_len, tokens + token_i);
+
+				// Check which literal it is
+				if(json_string[tokens[token_i].start_index] == 't') {
+					LexTrue(json_string, tokens + token_i);
+				}
+				else if(json_string[tokens[token_i].start_index] == 'f') {
+					LexFalse(json_string, tokens + token_i);
+				}
+				else if(json_string[tokens[token_i].start_index] == 'n') {
+					LexNull(json_string, tokens + token_i);
+				}
+				// else if(CHECK FOR NUM) {
+				// 	//
+				// }
+
+				if(tokens[token_i].type == TOKEN_BAD) {
+					printf("BAD_TOKEN: [%d,%d) ", tokens[token_i].start_index, tokens[token_i].start_index + tokens[token_i].length);
+					Token_Print(&tokens[token_i], json_string);
+					printf("\n");
+					bad_token_found = 1;
+				}
+
+				text_i = tokens[token_i].start_index + tokens[token_i].length;
+				++token_i;
 			} break;
 		}
 	}
