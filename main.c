@@ -19,6 +19,11 @@ typedef struct {
 	TOKEN_TYPE type;	
 	unsigned int start_index;
 	unsigned int length;
+	union {
+		long long numi;
+		double numf;
+	};
+	
 } TOKEN;
 
 void Token_Print(TOKEN* t, char* string) {
@@ -39,8 +44,7 @@ void LexString(char* text, int text_i, int text_len, TOKEN* token) {
 
 	token->type = TOKEN_BAD;
 	token->start_index = text_i;
-	while(text_i < text_len)
-	{
+	while(text_i < text_len) {
 		if(text[text_i] == '\"') {
 			token->type = TOKEN_STRING;
 			break;
@@ -71,6 +75,18 @@ void LexLiteral(char* text, int text_i, int text_len, TOKEN* token) {
 	}
 
 	token->length = text_i - token->start_index;
+}
+
+void LexNumber(char* text, int text_i, int text_len, TOKEN* token) {
+	assert(text);
+	assert(token);
+
+	int factor = 1;
+	if(text[text_i] == '-') {
+		factor = -1;
+		++text_i;
+	}
+
 }
 
 inline void LexTrue(char* text, TOKEN* token) {
@@ -123,7 +139,7 @@ inline void LexNull(char* text, TOKEN* token) {
 }
 
 int main() {
-	char* json_string = "true fall";
+	char* json_string = "true false null b";
 	printf("** JSON **\n%s\n", json_string);
 	int text_len = strlen(json_string); 
 
@@ -220,18 +236,18 @@ int main() {
 				LexLiteral(json_string, text_i, text_len, tokens + token_i);
 
 				// Check which literal it is
-				if(json_string[tokens[token_i].start_index] == 't') {
+				if(c == 't') {
 					LexTrue(json_string, tokens + token_i);
 				}
-				else if(json_string[tokens[token_i].start_index] == 'f') {
+				else if(c == 'f') {
 					LexFalse(json_string, tokens + token_i);
 				}
-				else if(json_string[tokens[token_i].start_index] == 'n') {
+				else if(c == 'n') {
 					LexNull(json_string, tokens + token_i);
 				}
-				// else if(CHECK FOR NUM) {
-				// 	//
-				// }
+				else if(c == '-' || ('0' <= c && c <= '9')) {
+					LexNumber(json_string, tokens + token_i);
+				}
 
 				text_i = tokens[token_i].start_index + tokens[token_i].length;
 
