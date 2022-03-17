@@ -23,7 +23,6 @@ typedef struct {
 		long long numi;
 		double numf;
 	};
-	
 } TOKEN;
 
 void Token_Print(TOKEN* t, char* string) {
@@ -75,6 +74,10 @@ void LexLiteral(char* text, int text_i, int text_len, TOKEN* token) {
 	}
 
 	token->length = text_i - token->start_index;
+}
+
+inline int CharIsNum(char c) {
+	return (int)('0' <= c && c <= '9');
 }
 
 void LexNumber(char* text, int text_i, int text_len, TOKEN* token) {
@@ -245,7 +248,7 @@ int main() {
 				else if(c == 'n') {
 					LexNull(json_string, tokens + token_i);
 				}
-				else if(c == '-' || ('0' <= c && c <= '9')) {
+				else if(c == '-' || CharIsNum(c)) {
 					LexNumber(json_string, tokens + token_i);
 				}
 
