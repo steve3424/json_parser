@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdint.h>
+
+#define ASCII_OFFSET_NUMBERS 48
+#define MAX_INT_64_DIV_10 922337203685477580LL
+#define MAX_INT_64 9223372036854775800LL
 
 typedef enum {
 	TOKEN_OPEN_CURLY,
@@ -12,6 +17,7 @@ typedef enum {
 	TOKEN_STRING,
 	TOKEN_BOOLEAN,
 	TOKEN_NULL,
+	TOKEN_INT_64,
 	TOKEN_BAD
 } TOKEN_TYPE;
 
@@ -20,7 +26,7 @@ typedef struct {
 	unsigned int start_index;
 	unsigned int length;
 	union {
-		long long numi;
+		long long int numi;
 		double numf;
 	};
 } TOKEN;
@@ -84,12 +90,45 @@ void LexNumber(char* text, int text_i, int text_len, TOKEN* token) {
 	assert(text);
 	assert(token);
 
-	int factor = 1;
+	int8_t factor = 1;
 	if(text[text_i] == '-') {
 		factor = -1;
 		++text_i;
 	}
 
+	long long int number = 0;
+	while(text_i < token->start_index + token->length) {
+		char c = text[text_i++];
+		uint8_t digit = c - ASCII_OFFSET_NUMBERS;
+
+		if(!CharIsNum(c)) {
+			return;
+		}
+		else {
+			// Check if multiplying by 10 will overflow
+			// Ex. 922337203685477581
+			if(number > MAX_INT_64_DIV_10) {
+				printf("Overflow!!\n");
+				return;
+			}
+			number *= 10;
+
+			if(number == MAX_INT_64) {
+				if(factor == 1 && digit > 7) {
+					printf("Overflow!!\n");
+					return;
+				}
+				else if(factor == -1 && digit > 8) {
+					printf("Underflow!!\n");
+					return;
+				}
+			}
+			number += digit;
+		}
+	}
+
+	token->numi = number * factor;
+	token->type = TOKEN_INT_64;
 }
 
 inline void LexTrue(char* text, TOKEN* token) {
@@ -142,7 +181,7 @@ inline void LexNull(char* text, TOKEN* token) {
 }
 
 int main() {
-	char* json_string = "true false null b";
+	char* json_string = "9223372036854775808";
 	printf("** JSON **\n%s\n", json_string);
 	int text_len = strlen(json_string); 
 
@@ -249,7 +288,7 @@ int main() {
 					LexNull(json_string, tokens + token_i);
 				}
 				else if(c == '-' || CharIsNum(c)) {
-					LexNumber(json_string, tokens + token_i);
+					LexNumber(json_string, text_i, text_len, tokens + token_i);
 				}
 
 				text_i = tokens[token_i].start_index + tokens[token_i].length;
@@ -269,7 +308,12 @@ int main() {
 	if(!bad_token_found) {
 		printf("\n** TOKENS **\n[");
 		for (int i = 0; i < token_i; i++) {
-			Token_Print(&tokens[i], json_string);
+			if(tokens[i].type == TOKEN_INT_64) {
+				printf("%lld", tokens[i].numi);
+			}
+			else {
+				Token_Print(&tokens[i], json_string);
+			}
 			printf(", ");
 		}
 		printf("]\n");
